@@ -1,5 +1,10 @@
 # epidemic-information-control
 
+### Temporal convention
+
+The Lyon contact timestamps are expressed in seconds relative
+to Monday, December 6, 2010 at 1:00 pm. The recording uses a 20 second temporal resolution.
+
 ### Citation
 
 Vanhems, P., Barrat, A., Cattuto, C., Pinton, J.-F., Khanafer, N.,
