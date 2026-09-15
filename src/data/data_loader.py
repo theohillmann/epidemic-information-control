@@ -1,24 +1,25 @@
-import pandas as pd
+import csv
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class Event:
     time: int
-    person_i: str
-    person_j: str
+    person_i: int
+    person_j: int
     person_status_i: str
     person_status_j: str
 
 
 def data_loader(data_path: str):
-    df = pd.read_csv(data_path, sep="\t")
+    with open(data_path, newline="", encoding="utf-8") as file:
+        reader = csv.DictReader(file, delimiter="\t")
 
-    for record in df.to_dict(orient="records"):
-        yield Event(
-            time=record["t"],
-            person_i=record["i"],
-            person_j=record["j"],
-            person_status_i=record["Si"],
-            person_status_j=record["Sj"],
-        )
+        for record in reader:
+            yield Event(
+                time=int(record["t"]),
+                person_i=int(record["i"]),
+                person_j=int(record["j"]),
+                person_status_i=record["Si"],
+                person_status_j=record["Sj"],
+            )
