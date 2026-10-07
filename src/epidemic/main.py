@@ -87,15 +87,17 @@ class Epidemic:
         )
         print(f"Patient zero is person {patient_zero}")
 
-    def run(self, cycles=1):
+    def run(self, cycles=None):
         events = list(data_loader(LYON_PATH))
 
         start_time = events[0].time
         end_time = events[-1].time
         recording_duration = end_time - start_time
 
-        for cycle in range(cycles):
-            next_snapshot = 0
+        cycle = 0
+
+        while cycles is None or cycle < cycles:
+            next_snapshot = cycle * recording_duration
 
             for event in events:
                 simulation_time = event.time - start_time + cycle * recording_duration
@@ -107,10 +109,17 @@ class Epidemic:
                     self.snapshot(simulation_time)
                     next_snapshot += self.snapshot_interval_seconds
 
+            cycle += 1
+
+            if cycles is None and not self.has_active_cases():
+                break
+
         final_state = self.get_state()
+
         return {
             "final_state": final_state,
             "attack_rate": self.get_attack_rate(final_state),
+            "cycles_completed": cycle,
         }
 
     def process_contact(self, person_i, person_j, event_time):
@@ -142,6 +151,16 @@ class Epidemic:
                 and time_in_state >= self.infectious_period
             ):
                 health_state.transition_to(DiseaseState.RECOVERED, current_time)
+
+    def has_active_cases(self):
+        return any(
+            health_state.state
+            in {
+                DiseaseState.EXPOSED,
+                DiseaseState.INFECTIOUS,
+            }
+            for health_state in self.state.values()
+        )
 
     def snapshot(self, simulation_time):
         counts = Counter(health_state.state for health_state in self.state.values())
@@ -176,5 +195,5 @@ class Epidemic:
 
 if __name__ == "__main__":
     epidemic = Epidemic()
-    res = epidemic.run(cycles=15)
+    res = epidemic.run(cycles=None)
     print(res)
