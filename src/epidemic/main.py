@@ -38,10 +38,10 @@ class Epidemic:
 
     def __init__(
         self,
-        seed=95,
+        seed=15,
         incubation_period=432000,
         infectious_period=604800,
-        transmission_probability=0.4,
+        transmission_probability=0.001,
         snapshot_interval_seconds=900,
     ):
         """
@@ -78,7 +78,6 @@ class Epidemic:
         self.recording_duration = self.end_time - self.start_time
 
         self.current_time = self.start_time
-        self.event_index = 0
 
     def __define_people(self):
         for event in data_loader(LYON_PATH):
@@ -134,35 +133,46 @@ class Epidemic:
     def simulate_until(self, end_time):
         new_infections = 0
 
-        while self.event_index < len(self.events):
-            event = self.events[self.event_index]
-
-            if event.time > end_time:
-                break
-
-            simulation_time = event.time
-
-            self.update_states(simulation_time)
-
-            before_i = self.state[event.person_i].state
-            before_j = self.state[event.person_j].state
-
-            self.process_contact(
-                event.person_i,
-                event.person_j,
-                simulation_time,
+        while self.current_time < end_time:
+            cycle = int(
+                (self.current_time - self.start_time) // self.recording_duration
             )
 
-            after_i = self.state[event.person_i].state
-            after_j = self.state[event.person_j].state
+            cycle_start = self.start_time + cycle * self.recording_duration
+            cycle_end = cycle_start + self.recording_duration
 
-            if before_i != DiseaseState.EXPOSED and after_i == DiseaseState.EXPOSED:
-                new_infections += 1
+            simulation_end = min(end_time, cycle_end)
 
-            if before_j != DiseaseState.EXPOSED and after_j == DiseaseState.EXPOSED:
-                new_infections += 1
+            for event in self.events:
+                event_time = event.time - self.start_time + cycle_start
 
-            self.event_index += 1
+                if event_time <= self.current_time:
+                    continue
+
+                if event_time > simulation_end:
+                    break
+
+                self.update_states(event_time)
+
+                before_i = self.state[event.person_i].state
+                before_j = self.state[event.person_j].state
+
+                self.process_contact(
+                    event.person_i,
+                    event.person_j,
+                    event_time,
+                )
+
+                after_i = self.state[event.person_i].state
+                after_j = self.state[event.person_j].state
+
+                if before_i != DiseaseState.EXPOSED and after_i == DiseaseState.EXPOSED:
+                    new_infections += 1
+
+                if before_j != DiseaseState.EXPOSED and after_j == DiseaseState.EXPOSED:
+                    new_infections += 1
+
+            self.current_time = simulation_end
 
         self.update_states(end_time)
         self.current_time = end_time
@@ -243,7 +253,7 @@ class Epidemic:
 if __name__ == "__main__":
     epidemic = Epidemic()
 
-    for step in range(5):
+    for step in range(200):
         end_time = epidemic.current_time + 12 * 60 * 60
 
         new_infections = epidemic.simulate_until(end_time)
@@ -252,3 +262,12 @@ if __name__ == "__main__":
         print("New infections:", new_infections)
         print("Current time:", epidemic.current_time)
         print("State:", epidemic.get_state())
+
+    print()
+    print("Number of events:", len(epidemic.events))
+    print("First event:", epidemic.events[0])
+    print("Last event:", epidemic.events[-1])
+    print("Start:", epidemic.start_time)
+    print("End:", epidemic.end_time)
+    print("Duration:", epidemic.recording_duration)
+    print("Duration hours:", epidemic.recording_duration / 3600)
