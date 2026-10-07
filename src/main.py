@@ -10,8 +10,3 @@ lyon_dataset_metadata = DatasetMetadata(
     time_resolution=20,
     time_origin="2010-12-01 13:00:00",
 )
-
-events = data_loader(LYON_PATH)
-
-for event in events:
-    print(event)

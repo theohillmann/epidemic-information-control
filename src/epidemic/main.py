@@ -1,8 +1,6 @@
 import os
 import numpy as np
-import pandas as pd
 from enum import Enum
-import streamlit as st
 from datetime import timedelta
 from collections import Counter
 from dataclasses import dataclass
@@ -38,12 +36,34 @@ class HealthState:
 
 class Epidemic:
 
-    def __init__(self):
-        self.SEED = 95
+    def __init__(
+        self,
+        seed=95,
+        incubation_period=432000,
+        infectious_period=604800,
+        transmission_probability=0.005,
+        snapshot_interval_seconds=900,
+    ):
+        """
+        :param seed: Random seed for reproducibility. Defaults to 95.
+        :param incubation_period: Time an individual spends in the exposed state,
+            in seconds. Defaults to 5 days (432,000 seconds).
+        :param infectious_period: Time an individual spends in the infectious state,
+            in seconds. Defaults to 7 days (604,800 seconds).
+        :param transmission_probability: Probability of transmission during a contact.
+            Defaults to 0.005 (0.5%).
+        :param snapshot_interval_seconds: Interval between snapshots, in seconds.
+            Defaults to 15 minutes (900 seconds).
+        """
+        self.SEED = seed
         self.rng = np.random.default_rng(self.SEED)
-        self.incubation_period = 5 * 24 * 60 * 60  # 5 days in seconds
-        self.infectious_period = 7 * 24 * 60 * 60  # 7 days in seconds
-        self.transmission_probability = 0.005
+
+        self.incubation_period = incubation_period
+        self.infectious_period = infectious_period
+        self.transmission_probability = transmission_probability
+
+        self.snapshot_interval_seconds = snapshot_interval_seconds
+
         self.people = set()
         self.state = dict()
         self.history = []
@@ -65,7 +85,7 @@ class Epidemic:
         self.state[patient_zero] = HealthState(
             state=DiseaseState.INFECTIOUS, entered_at=0
         )
-        st.write(f"Patient zero is person {patient_zero}")
+        print(f"Patient zero is person {patient_zero}")
 
     def run(self, cycles=1):
         events = list(data_loader(LYON_PATH))
@@ -85,9 +105,9 @@ class Epidemic:
 
                 if simulation_time >= next_snapshot:
                     self.snapshot(simulation_time)
-                    next_snapshot += 15 * 60
+                    next_snapshot += self.snapshot_interval_seconds
 
-        self.show_state()
+        return self.get_state()
 
     def process_contact(self, person_i, person_j, event_time):
         state_i = self.state[person_i].state
@@ -134,23 +154,18 @@ class Epidemic:
     def get_current_time(self, simulation_time):
         return lyon_dataset_metadata.time_origin + timedelta(seconds=simulation_time)
 
-    def show_state(self):
+    def get_state(self):
         counts = Counter(health_state.state for health_state in self.state.values())
 
-        col1, col2, col3, col4 = st.columns(4)
-
-        col1.metric("Susceptible", counts[DiseaseState.SUSCEPTIBLE])
-        col2.metric("Exposed", counts[DiseaseState.EXPOSED])
-        col3.metric("Infectious", counts[DiseaseState.INFECTIOUS])
-        col4.metric("Recovered", counts[DiseaseState.RECOVERED])
-
-        history = pd.DataFrame(self.history)
-
-        history = history.set_index("time")
-
-        st.line_chart(history)
+        return {
+            "Susceptible": counts[DiseaseState.SUSCEPTIBLE],
+            "Exposed": counts[DiseaseState.EXPOSED],
+            "Infectious": counts[DiseaseState.INFECTIOUS],
+            "Recovered": counts[DiseaseState.RECOVERED],
+        }
 
 
 if __name__ == "__main__":
     epidemic = Epidemic()
-    epidemic.run(cycles=6)
+    res = epidemic.run(cycles=6)
+    print(res)
