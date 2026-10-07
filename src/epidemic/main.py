@@ -38,20 +38,20 @@ class Epidemic:
 
     def __init__(
         self,
-        seed=95,
+        seed=15,
         incubation_period=432000,
         infectious_period=604800,
-        transmission_probability=0.005,
+        transmission_probability=0.001,
         snapshot_interval_seconds=900,
     ):
         """
-        :param seed: Random seed for reproducibility. Defaults to 95.
+        :param seed: Random seed for reproducibility. Defaults to 15.
         :param incubation_period: Time an individual spends in the exposed state,
             in seconds. Defaults to 5 days (432,000 seconds).
         :param infectious_period: Time an individual spends in the infectious state,
             in seconds. Defaults to 7 days (604,800 seconds).
         :param transmission_probability: Probability of transmission during a contact.
-            Defaults to 0.005 (0.5%).
+            Defaults to 0.001 (0.1%).
         :param snapshot_interval_seconds: Interval between snapshots, in seconds.
             Defaults to 15 minutes (900 seconds).
         """
@@ -77,15 +77,14 @@ class Epidemic:
             self.people.add(event.person_j)
 
     def __set_states(self):
-        patient_zero = self.rng.choice(sorted(self.people))
+        self.patient_zero = self.rng.choice(sorted(self.people))
         self.state = {
             person: HealthState(state=DiseaseState.SUSCEPTIBLE, entered_at=0)
             for person in self.people
         }
-        self.state[patient_zero] = HealthState(
+        self.state[self.patient_zero] = HealthState(
             state=DiseaseState.INFECTIOUS, entered_at=0
         )
-        print(f"Patient zero is person {patient_zero}")
 
     def run(self, cycles=None):
         events = list(data_loader(LYON_PATH))
@@ -120,6 +119,7 @@ class Epidemic:
             "final_state": final_state,
             "attack_rate": self.get_attack_rate(final_state),
             "cycles_completed": cycle,
+            "patient_zero": self.patient_zero,
         }
 
     def process_contact(self, person_i, person_j, event_time):
