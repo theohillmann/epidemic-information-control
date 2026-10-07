@@ -107,7 +107,11 @@ class Epidemic:
                     self.snapshot(simulation_time)
                     next_snapshot += self.snapshot_interval_seconds
 
-        return self.get_state()
+        final_state = self.get_state()
+        return {
+            "final_state": final_state,
+            "attack_rate": self.get_attack_rate(final_state),
+        }
 
     def process_contact(self, person_i, person_j, event_time):
         state_i = self.state[person_i].state
@@ -151,9 +155,6 @@ class Epidemic:
             }
         )
 
-    def get_current_time(self, simulation_time):
-        return lyon_dataset_metadata.time_origin + timedelta(seconds=simulation_time)
-
     def get_state(self):
         counts = Counter(health_state.state for health_state in self.state.values())
 
@@ -164,8 +165,16 @@ class Epidemic:
             "Recovered": counts[DiseaseState.RECOVERED],
         }
 
+    def get_attack_rate(self, final_state):
+
+        return (
+            final_state["Exposed"]
+            + final_state["Infectious"]
+            + final_state["Recovered"]
+        ) / len(self.people)
+
 
 if __name__ == "__main__":
     epidemic = Epidemic()
-    res = epidemic.run(cycles=6)
+    res = epidemic.run(cycles=15)
     print(res)
